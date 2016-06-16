@@ -7,9 +7,30 @@ export function getOptions (params) {
 }
 
 export function errorHandler(error) {
-  const e = error.toJSON();
-  const data = Object.assign({ errors: error.errors}, e);
-  throw new errors.BadRequest(e.summary, data);
+  let feathersError = error
+
+  if (typeof error === 'undefined') {
+    feathersError = new errors.BadRequest('Unknown Error', {
+      errors: ['Unknown Error'],
+    })
+  }
+
+  if (typeof error === 'string') {
+    feathersError = new errors.BadRequest(error.message, {
+      errors: [error],
+    })
+  }
+
+console.log('Error', error)
+  try {
+    const e = error
+    const data = Object.assign({ errors: error.errors}, e);
+    feathersError = new errors.BadRequest(e.summary, data);
+  } catch(error) {
+    feathersError = error
+  }
+
+  throw feathersError
 }
 
 export function getOrder(sort={}) {
