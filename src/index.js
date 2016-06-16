@@ -16,97 +16,25 @@ class Service {
     return Proto.extend(obj, this);
   }
 
-  _find(params, count, getFilter = filter) {
-    let where = utils.getWhere(params.query);
-    let filters = getFilter(where);
-    let order = utils.getOrder(filters.$sort);
-    let options = filters.$select ? { select: Array.from(filters.$select) } : {};
-    let counter = this.Model.count().where(where);
-    let query = this.Model.find(where, options);
-
-    if (order) {
-      query.sort(order);
-    }
-
-    if (filters.$skip) {
-      query.skip(filters.$skip);
-    }
-
-    if(filters.$limit) {
-      query.limit(filters.$limit);
-    }
-    
-    const performQuery = total => {
-      return query.then(data => {
-        return {
-          total,
-          limit: filters.$limit,
-          skip: filters.$skip || 0,
-          data
-        };
-      });
-    };
-    
-    if(count) {
-      return counter.then(performQuery);
-    }
-    
-    return performQuery();
-  }
-  
   find(params) {
-    const paginate = !!this.paginate.default;
-    const result = this._find(params, paginate, query => filter(query, this.paginate));
-    
-    if(!paginate) {
-      return result.then(page => page.data);
-    }
-    
-    return result;
-  }
-  
-  _get(id) {
-    return this.Model.findOne({ id }).then(instance => {
-      if (!instance) {
-        throw new errors.NotFound(`No record found for id '${id}'`);
-      }
+    const query = utils.getQuery(params)
+    const options = utils.getOptions(params, 'find')
 
-      return instance;
-    }).catch(utils.errorHandler);
+    return this.Model.where(query).fetchAll(options).then((results) => (
+      results
+    )).catch(utils.errorHandler)
   }
-  
-  get(... args) {
-    return this._get(... args);
-  }
-  
-  _findOrGet(id, params) {
-    if(id === null) {
-      return this._find(params).then(page => page.data);
-    }
-    
-    return this._get(id);
+
+  get(id) {
+    return this.Model.findWhere({id}).fetch(params).then(instance => instance).catch(utils.errorHandler)
   }
 
   create(data) {
     return this.Model.create(data).catch(utils.errorHandler);
   }
 
-  _patch(id, data, params) {
-    const where = Object.assign({}, params.query);
-
-    if (id !== null) {
-      where[this.id] = id;
-    }
-
-    delete data[this.id];
-
-    return this.Model.update({ where }, data)
-      .then(() => this._findOrGet(id, params))
-      .catch(utils.errorHandler);
-  }
-  
   patch(... args) {
-    return this._patch(... args);
+    return this.Model.update(...args)
   }
 
   update(id, data) {
@@ -116,17 +44,16 @@ class Service {
 
     delete data[this.id];
 
-    return this.Model.findOne({ id }).then(instance => {
+    return this.Model.findWhere({ id }).fetch().then(instance => {
       if (!instance) {
         throw new errors.NotFound(`No record found for id '${id}'`);
       }
 
-      let copy = {};
+      const copy = {};
       Object.keys(instance.toJSON()).forEach(key => {
-
         // NOTE (EK): Make sure that we don't waterline created fields to null
         // just because a user didn't pass them in.
-        if ((key === 'createdAt' || key === 'updatedAt') && typeof data[key] === 'undefined') {
+        if ((key === 'created_at' || key === 'created_at') && typeof data[key] === 'undefined') {
           return;
         }
 
@@ -137,22 +64,13 @@ class Service {
         }
       });
 
-      return this._patch(id, copy, {});
+      return this.patch(id, copy, {});
     })
     .catch(utils.errorHandler);
   }
 
   remove(id, params) {
-    return this._findOrGet(id, params).then(data => {
-      const where = Object.assign({}, params.query);
-
-      if (id !== null) {
-        where.id = id;
-      }
-
-      return this.Model.destroy({ where }).then(() => data);
-    })
-    .catch(utils.errorHandler);
+    return this.get(id)
   }
 }
 
