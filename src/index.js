@@ -75,7 +75,7 @@ class Service {
 }
 
 export default function init(Model) {
-  return new Service(Model);
+  return new Service({Model});
 }
 
 init.Service = Service;
