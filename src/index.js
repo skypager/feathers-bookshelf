@@ -17,7 +17,7 @@ class Service {
   }
 
   find(params) {
-    const query = utils.getQuery(params)
+    const query = utils.getWhere(params)
     const options = utils.getOptions(params, 'find')
 
     return this.Model.where(query).fetchAll(options).then((results) => (

@@ -1,4 +1,10 @@
 import errors from 'feathers-errors';
+import pick from 'lodash/pick'
+import omit from 'lodash/omit'
+
+export function getOptions (params) {
+  return pick(params, 'withRelated', 'require')
+}
 
 export function errorHandler(error) {
   const e = error.toJSON();
@@ -46,23 +52,5 @@ function getValue(value, prop) {
 }
 
 export function getWhere(query) {
-  const where = {};
-
-  if(typeof query !== 'object') {
-    return {};
-  }
-
-  Object.keys(query).forEach(prop => {
-    const value = query[prop];
-
-    if(prop === '$or') {
-      where.or = value;
-    } else if(value.$in) {
-      where[prop] = value.$in;
-    } else {
-      where[prop] = getValue(value, prop);
-    }
-  });
-
-  return where;
+  return omit(query, 'require', 'withRelated', '$limit', '$order', '$skip', '$select')
 }
